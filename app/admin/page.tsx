@@ -20,8 +20,11 @@ import {
   customersRepo,
   type Customer,
 } from "@/lib/repository";
+import type { AdminProductRow } from "@/lib/repository/products";
 import { useSession } from "@/lib/auth";
 import { useTranslations, useLocale } from "@/lib/i18n";
+import RevenueChart from "@/components/admin/RevenueChart";
+import LowStockTable from "@/components/admin/LowStockTable";
 
 export default function AdminDashboardPage() {
   const t = useTranslations();
@@ -30,6 +33,8 @@ export default function AdminDashboardPage() {
   const [orders, setOrders] = useState<OrderRecord[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
+  const [lowStock, setLowStock] = useState<AdminProductRow[]>([]);
+  const [lowStockLoading, setLowStockLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -43,9 +48,20 @@ export default function AdminDashboardPage() {
       setProducts(p);
       setCustomers(c);
     });
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    productsRepo.listLowStock(5).then((rows) => {
+      if (!cancelled) {
+        setLowStock(rows);
+        setLowStockLoading(false);
+      }
+    }).catch(() => {
+      if (!cancelled) setLowStockLoading(false);
+    });
+    return () => { cancelled = true; };
   }, []);
 
   const totalRevenue = orders.reduce((sum, o) => sum + o.subtotal, 0);
@@ -55,31 +71,11 @@ export default function AdminDashboardPage() {
 
   const loc = locale === "ar" ? "ar-DZ" : locale;
 
-  const stats: {
-    icon: LucideIcon;
-    labelKey: string;
-    value: string;
-  }[] = [
-    {
-      icon: TrendingUp,
-      labelKey: "admin.stats.revenue",
-      value: formatPrice(totalRevenue),
-    },
-    {
-      icon: ShoppingBag,
-      labelKey: "admin.stats.orders",
-      value: totalOrders.toLocaleString(loc),
-    },
-    {
-      icon: Package,
-      labelKey: "admin.stats.products",
-      value: totalProducts.toLocaleString(loc),
-    },
-    {
-      icon: Users,
-      labelKey: "admin.stats.customers",
-      value: totalCustomers.toLocaleString(loc),
-    },
+  const stats: { icon: LucideIcon; labelKey: string; value: string }[] = [
+    { icon: TrendingUp, labelKey: "admin.stats.revenue", value: formatPrice(totalRevenue) },
+    { icon: ShoppingBag, labelKey: "admin.stats.orders", value: totalOrders.toLocaleString(loc) },
+    { icon: Package, labelKey: "admin.stats.products", value: totalProducts.toLocaleString(loc) },
+    { icon: Users, labelKey: "admin.stats.customers", value: totalCustomers.toLocaleString(loc) },
   ];
 
   const recentOrders = orders.slice(0, 5);
@@ -105,10 +101,7 @@ export default function AdminDashboardPage() {
       {/* Stats */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         {stats.map(({ icon: Icon, labelKey, value }) => (
-          <div
-            key={labelKey}
-            className="bg-white rounded-2xl border border-[#E5E5E5] p-5"
-          >
+          <div key={labelKey} className="bg-white rounded-2xl border border-[#E5E5E5] p-5">
             <div className="flex items-center justify-between mb-4">
               <div className="w-10 h-10 rounded-xl bg-[#FEE2E2] text-[#DC2626] flex items-center justify-center">
                 <Icon className="w-5 h-5" />
@@ -117,14 +110,59 @@ export default function AdminDashboardPage() {
             <p className="text-xs font-semibold uppercase tracking-wider text-[#737373] mb-1">
               {t(labelKey)}
             </p>
-            <p className="font-heading text-2xl font-bold text-[#0A0A0A]">
-              {value}
-            </p>
+            <p className="font-heading text-2xl font-bold text-[#0A0A0A]">{value}</p>
           </div>
         ))}
       </div>
 
-      {/* Two-col: recent orders + top products */}
+      {/* Revenue chart + Low stock */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Revenue chart */}
+        <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E5E5E5] overflow-hidden">
+          <div className="px-5 pt-5 pb-3 border-b border-[#E5E5E5]">
+            <h2 className="font-heading text-lg font-bold text-[#0A0A0A]">
+              {t("admin.revenueChart")}
+            </h2>
+          </div>
+          <div className="px-5 py-4">
+            <RevenueChart orders={orders} />
+          </div>
+        </div>
+
+        {/* Low stock */}
+        <div className="bg-white rounded-2xl border border-[#E5E5E5] overflow-hidden">
+          <div className="flex items-center justify-between p-5 border-b border-[#E5E5E5]">
+            <div>
+              <h2 className="font-heading text-lg font-bold text-[#0A0A0A]">
+                {t("admin.lowStock")}
+              </h2>
+              <p className="text-xs text-[#737373] mt-0.5">{t("admin.lowStockDesc")}</p>
+            </div>
+            <Link
+              href="/admin/products"
+              className="text-xs font-semibold text-[#DC2626] hover:underline inline-flex items-center gap-1 shrink-0"
+            >
+              {t("admin.viewAllProducts")}
+              <ArrowUpRight className="w-3.5 h-3.5" />
+            </Link>
+          </div>
+          {lowStockLoading ? (
+            <div className="p-5 space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="flex items-center gap-3 animate-pulse">
+                  <div className="w-9 h-9 rounded-lg bg-[#F5F5F5]" />
+                  <div className="flex-1 h-4 bg-[#F5F5F5] rounded" />
+                  <div className="w-10 h-5 bg-[#F5F5F5] rounded-full" />
+                </div>
+              ))}
+            </div>
+          ) : (
+            <LowStockTable products={lowStock} />
+          )}
+        </div>
+      </div>
+
+      {/* Recent orders + top products */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Recent orders */}
         <div className="lg:col-span-2 bg-white rounded-2xl border border-[#E5E5E5] overflow-hidden">
@@ -140,14 +178,10 @@ export default function AdminDashboardPage() {
               <ArrowRight className="w-3.5 h-3.5" />
             </Link>
           </div>
-
           {recentOrders.length > 0 ? (
             <ul className="divide-y divide-[#E5E5E5]">
               {recentOrders.map((o) => (
-                <li
-                  key={o.id}
-                  className="px-5 py-4 flex items-center justify-between gap-4"
-                >
+                <li key={o.id} className="px-5 py-4 flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <Link
                       href={`/admin/orders/${o.id}`}
@@ -155,14 +189,10 @@ export default function AdminDashboardPage() {
                     >
                       {o.id}
                     </Link>
-                    <p className="text-xs text-[#737373] truncate">
-                      {o.customer.fullName}
-                    </p>
+                    <p className="text-xs text-[#737373] truncate">{o.customer.fullName}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-[#DC2626]">
-                      {formatPrice(o.subtotal)}
-                    </p>
+                    <p className="text-sm font-bold text-[#DC2626]">{formatPrice(o.subtotal)}</p>
                     <p className="text-xs text-[#737373]">
                       {new Date(o.createdAt).toLocaleDateString(locStr)}
                     </p>
@@ -171,9 +201,7 @@ export default function AdminDashboardPage() {
               ))}
             </ul>
           ) : (
-            <div className="text-center py-12 text-sm text-[#737373]">
-              {t("admin.noOrders")}
-            </div>
+            <div className="text-center py-12 text-sm text-[#737373]">{t("admin.noOrders")}</div>
           )}
         </div>
 
@@ -196,24 +224,14 @@ export default function AdminDashboardPage() {
               <li key={p.id} className="px-5 py-3 flex items-center gap-3">
                 <div className="w-10 h-10 shrink-0 rounded-lg overflow-hidden bg-[#F5F5F5] relative">
                   {p.image && (
-                    <Image
-                      src={p.image}
-                      alt={p.name}
-                      fill
-                      sizes="40px"
-                      className="object-cover"
-                    />
+                    <Image src={p.image} alt={p.name} fill sizes="40px" className="object-cover" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-[#0A0A0A] truncate">
-                    {p.name}
-                  </p>
+                  <p className="text-sm font-medium text-[#0A0A0A] truncate">{p.name}</p>
                   <p className="text-xs text-[#737373]">{p.category}</p>
                 </div>
-                <p className="text-sm font-bold text-[#DC2626] shrink-0">
-                  {formatPrice(p.price)}
-                </p>
+                <p className="text-sm font-bold text-[#DC2626] shrink-0">{formatPrice(p.price)}</p>
               </li>
             ))}
           </ul>

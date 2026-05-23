@@ -27,6 +27,7 @@ import {
 } from "@/lib/supabase/server";
 import type { CartItem } from "@/lib/useCart";
 import type { OrderCustomer, OrderRecord, OrderStatus } from "@/lib/orders";
+import { sendOrderNotification } from "@/lib/telegram";
 
 export interface CreateOrderActionInput {
   items: CartItem[];
@@ -345,11 +346,32 @@ export async function createOrder(
   // order without a hard refresh.
   revalidatePath("/admin/orders");
 
+  const subtotalCents = (refreshed?.subtotal_cents as number) ?? 0;
+
+  // Fire-and-forget Telegram notification — never blocks or fails the order.
+  void sendOrderNotification({
+    orderNumber: newOrder.order_number as string,
+    customerName: c.fullName.trim(),
+    phone: c.phone.trim(),
+    wilaya: c.wilaya.trim(),
+    commune: c.commune.trim(),
+    address: c.address.trim(),
+    note: c.note?.trim() || null,
+    items: resolved.map((r) => ({
+      name: r.productName,
+      size: r.size,
+      colorName: r.colorName,
+      quantity: r.quantity,
+      unitPriceCents: r.unitPriceCents,
+    })),
+    subtotalCents,
+  });
+
   return {
     ok: true,
     orderId: newOrder.id as string,
     orderNumber: newOrder.order_number as string,
-    subtotalCents: (refreshed?.subtotal_cents as number) ?? 0,
+    subtotalCents,
   };
 }
 

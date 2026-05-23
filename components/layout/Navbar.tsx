@@ -25,6 +25,7 @@ import { useLocale, LOCALES, LOCALE_LABELS, type Locale } from "@/lib/i18n";
 import { useSession } from "@/lib/auth";
 import CartDrawer from "@/components/layout/CartDrawer";
 import FavoritesDrawer from "@/components/layout/FavoritesDrawer";
+import SearchModal from "@/components/layout/SearchModal";
 
 interface NavChild {
   href: string;
@@ -74,6 +75,7 @@ export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [favsOpen, setFavsOpen] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
   const { count: wishlistCount, hydrated: favsHydrated } = useFavorites();
   const { count: cartCount, hydrated: cartHydrated } = useCart();
 
@@ -184,6 +186,7 @@ export default function Navbar() {
           {/* Search */}
           <button
             aria-label={t("nav.search")}
+            onClick={() => setSearchOpen(true)}
             className="text-[#0A0A0A] hover:text-[#DC2626] transition-colors duration-200"
           >
             <Search className="w-6 h-6" />
@@ -313,6 +316,14 @@ export default function Navbar() {
                   </button>
                 </div>
                 <nav className="flex-1 overflow-y-auto py-4">
+                  {/* Search */}
+                  <button
+                    onClick={() => { setMobileOpen(false); setSearchOpen(true); }}
+                    className="flex items-center gap-3 w-full px-6 py-3 text-[#404040] hover:text-[#0A0A0A] hover:bg-[#FAFAFA] font-medium transition-colors border-b border-[#F5F5F5] mb-2"
+                  >
+                    <Search className="w-4 h-4" />
+                    {t("nav.search")}
+                  </button>
                   {navLinks.map((link) => {
                     if (link.children) {
                       return (
@@ -371,6 +382,7 @@ export default function Navbar() {
 
       <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
       <FavoritesDrawer open={favsOpen} onOpenChange={setFavsOpen} />
+      <SearchModal open={searchOpen} onClose={() => setSearchOpen(false)} />
     </header>
   );
 }

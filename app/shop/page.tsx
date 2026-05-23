@@ -58,12 +58,15 @@ function ShopPageInner() {
   const [filters, setFilters] = useState<FiltersState>(emptyFilters);
   const [allProducts, setAllProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [discountOnly, setDiscountOnly] = useState(false);
 
-  // Hydrate filters and sort from URL on mount and when query changes
+  // Hydrate filters, sort, search query and discount flag from URL
   useEffect(() => {
     const params = new URLSearchParams(searchParams.toString());
-    const next = filtersFromParams(params);
-    setFilters(next);
+    setFilters(filtersFromParams(params));
+    setSearchQuery(params.get("q") ?? "");
+    setDiscountOnly(params.get("discount") === "true");
     const sortParam = params.get("sort");
     if (
       sortParam === "featured" ||
@@ -92,20 +95,19 @@ function ShopPageInner() {
 
   function updateFilters(next: FiltersState) {
     setFilters(next);
-    const qs = filtersToQuery(next);
-    router.replace(qs ? `/shop?${qs}` : "/shop", { scroll: false });
+    const url = new URLSearchParams(filtersToQuery(next));
+    if (searchQuery) url.set("q", searchQuery);
+    if (discountOnly) url.set("discount", "true");
+    router.replace(`/shop?${url.toString()}`, { scroll: false });
   }
 
   const sortedProducts = useMemo(() => {
-    const filtered = allProducts.filter((p) => {
-      if (filters.genders.length && !filters.genders.includes(p.gender)) {
+    let filtered = allProducts.filter((p) => {
+      if (filters.genders.length && !filters.genders.includes(p.gender))
         return false;
-      }
-      if (filters.types.length && !filters.types.includes(p.type)) {
+      if (filters.types.length && !filters.types.includes(p.type))
         return false;
-      }
       if (filters.categories.length) {
-        // Same category mapping the repo uses; mirrored here for client-side filtering
         const matchers: Record<string, Product["type"][]> = {
           shoes: ["running", "basketball", "casual", "training"],
           clothing: ["apparel"],
@@ -116,14 +118,20 @@ function ShopPageInner() {
         );
         if (!matchesAny) return false;
       }
-      if (
-        p.price < filters.priceRange[0] ||
-        p.price > filters.priceRange[1]
-      ) {
+      if (p.price < filters.priceRange[0] || p.price > filters.priceRange[1])
         return false;
-      }
       return true;
     });
+
+    if (searchQuery.trim()) {
+      const q = searchQuery.trim().toLowerCase();
+      filtered = filtered.filter((p) => p.name.toLowerCase().includes(q));
+    }
+
+    if (discountOnly) {
+      filtered = filtered.filter((p) => p.discount);
+    }
+
     const arr = [...filtered];
     arr.sort((a, b) => {
       if (sortValue === "price-asc") return a.price - b.price;
@@ -132,7 +140,7 @@ function ShopPageInner() {
       return 0;
     });
     return arr;
-  }, [allProducts, filters, sortValue]);
+  }, [allProducts, filters, sortValue, searchQuery, discountOnly]);
 
   return (
     <>
@@ -144,7 +152,27 @@ function ShopPageInner() {
             <h1 className="font-heading text-4xl sm:text-5xl font-bold tracking-tight text-[#0A0A0A] mb-3">
               {t("shop.title")}
             </h1>
-            <p className="text-[#525252]">{t("shop.subtitle")}</p>
+            {searchQuery ? (
+              <div className="flex items-center gap-3">
+                <p className="text-[#525252]">
+                  {t("nav.searchNoResults")
+                    .replace("Aucun résultat pour", "Résultats pour")
+                    .replace("No results for", "Results for")
+                    .replace("لا نتائج لـ", "نتائج لـ")}
+                  {" "}<strong className="text-[#0A0A0A]">"{searchQuery}"</strong>
+                </p>
+                <button
+                  onClick={() => router.replace("/shop", { scroll: false })}
+                  className="text-xs text-[#737373] hover:text-[#DC2626] underline transition-colors"
+                >
+                  {t("filters.clearAll")}
+                </button>
+              </div>
+            ) : discountOnly ? (
+              <p className="text-[#525252]">{t("promo.sectionTitle")}</p>
+            ) : (
+              <p className="text-[#525252]">{t("shop.subtitle")}</p>
+            )}
           </div>
 
           {/* Mobile Filter Toggle */}

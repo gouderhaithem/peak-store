@@ -28,6 +28,10 @@ export default function RegisterPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (form.password.length < 8) {
+      setError(t("login.passwordTooShort"));
+      return;
+    }
     if (form.password !== form.confirm) {
       setError(t("login.passwordsDontMatch"));
       return;

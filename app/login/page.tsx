@@ -4,7 +4,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff, Mail, Lock, ArrowRight, Info } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, ArrowRight } from "lucide-react";
 import Navbar from "@/components/layout/Navbar";
 import Footer from "@/components/layout/Footer";
 import { useTranslations } from "@/lib/i18n";
@@ -197,13 +197,6 @@ export default function LoginPage() {
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </button>
 
-              <div className="rounded-lg bg-[#FAFAFA] border border-[#E5E5E5] px-4 py-3 text-xs text-[#525252] flex items-start gap-2">
-                <Info className="w-4 h-4 text-[#737373] shrink-0 mt-0.5" />
-                <div>
-                  <p>{t("auth.hint")}</p>
-                  <p className="text-[#737373] mt-0.5">{t("auth.hintCustomer")}</p>
-                </div>
-              </div>
 
               <div className="relative my-6">
                 <div className="absolute inset-0 flex items-center">

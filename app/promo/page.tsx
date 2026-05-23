@@ -54,6 +54,8 @@ function Countdown() {
 export default function PromoPage() {
   const t = useTranslations();
   const [discounted, setDiscounted] = useState<Product[]>([]);
+  const [email, setEmail] = useState("");
+  const [subscribed, setSubscribed] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -66,6 +68,13 @@ export default function PromoPage() {
       cancelled = true;
     };
   }, []);
+
+  function handleNewsletter(e: React.FormEvent) {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setSubscribed(true);
+    setEmail("");
+  }
 
   const topDeal = discounted[0];
 
@@ -217,9 +226,12 @@ export default function PromoPage() {
                       </span>
                     )}
                   </div>
-                  <button className="w-full h-12 bg-[#0A0A0A] hover:bg-[#262626] text-white font-semibold rounded-lg transition-colors">
+                  <Link
+                    href={`/shop/${topDeal.id}`}
+                    className="w-full h-12 bg-[#0A0A0A] hover:bg-[#262626] text-white font-semibold rounded-lg transition-colors inline-flex items-center justify-center"
+                  >
                     {t("promo.grabDeal")}
-                  </button>
+                  </Link>
                 </div>
               </div>
             )}
@@ -325,19 +337,30 @@ export default function PromoPage() {
             <p className="text-[#A3A3A3] mb-8 max-w-lg mx-auto">
               {t("promo.newsletterText")}
             </p>
-            <form className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto">
-              <input
-                type="email"
-                placeholder={t("promo.emailPlaceholder")}
-                className="flex-1 h-12 px-4 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[#DC2626] focus:ring-2 focus:ring-[#DC2626]/30 transition"
-              />
-              <button
-                type="submit"
-                className="h-12 px-7 bg-[#DC2626] hover:bg-[#B91C1C] font-semibold rounded-lg transition-colors"
+            {subscribed ? (
+              <p className="text-[#DC2626] font-semibold text-lg">
+                ✓ {t("promo.subscribed") || "Merci ! Vous êtes inscrit(e)."}
+              </p>
+            ) : (
+              <form
+                onSubmit={handleNewsletter}
+                className="flex flex-col sm:flex-row gap-3 max-w-lg mx-auto"
               >
-                {t("common.subscribe")}
-              </button>
-            </form>
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t("promo.emailPlaceholder")}
+                  className="flex-1 h-12 px-4 rounded-lg bg-white/10 backdrop-blur-sm border border-white/20 text-white placeholder:text-white/50 focus:outline-none focus:border-[#DC2626] focus:ring-2 focus:ring-[#DC2626]/30 transition"
+                />
+                <button
+                  type="submit"
+                  className="h-12 px-7 bg-[#DC2626] hover:bg-[#B91C1C] font-semibold rounded-lg transition-colors"
+                >
+                  {t("common.subscribe")}
+                </button>
+              </form>
+            )}
           </div>
         </section>
       </main>

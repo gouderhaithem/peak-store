@@ -126,6 +126,7 @@ export interface VariantInput {
 
 export interface ProductsRepository {
   list(filters?: ProductFilters): Promise<Product[]>;
+  search(query: string, limit?: number): Promise<Product[]>;
   findById(id: string): Promise<Product | null>;
   findManyByIds(ids: string[]): Promise<Product[]>;
   listFeatured(limit?: number): Promise<Product[]>;
@@ -148,6 +149,7 @@ export interface ProductsRepository {
   // fresh slug and an "(copy)" suffix on the name. Returns the new product.
   duplicate(id: string): Promise<Product>;
   listAdmin(params: AdminListParams): Promise<AdminListResult>;
+  listLowStock(threshold?: number): Promise<AdminProductRow[]>;
   listColors(): Promise<ProductColor[]>;
   listVariants(productId: string): Promise<ProductVariant[]>;
   saveVariants(
@@ -196,6 +198,14 @@ function applyFilters(products: Product[], f: ProductFilters): Product[] {
 export const mockProductsRepo: ProductsRepository = {
   async list(filters = {}) {
     return applyFilters(shopProducts, filters);
+  },
+  async search(query, limit = 8) {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    const results = [...shopProducts, ...featuredProducts]
+      .filter((p) => p.name.toLowerCase().includes(q))
+      .slice(0, limit);
+    return results;
   },
   async findById(id) {
     return (
@@ -298,6 +308,18 @@ export const mockProductsRepo: ProductsRepository = {
       featuredProducts.find((p) => p.id === id);
     if (!source) throw new Error("Product not found");
     return { ...source, id: `mock_${Date.now()}`, name: `${source.name} (copy)` };
+  },
+  async listLowStock(threshold = 5) {
+    return shopProducts.slice(0, 3).map((p) => ({
+      id: p.id,
+      name: p.name,
+      type: p.type,
+      image: p.image,
+      price: p.price,
+      stock: Math.floor(Math.random() * threshold),
+      isActive: true,
+      isNew: p.isNew,
+    }));
   },
   async listAdmin({ page, pageSize, query }) {
     const q = (query ?? "").trim().toLowerCase();

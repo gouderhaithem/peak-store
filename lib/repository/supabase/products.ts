@@ -270,6 +270,22 @@ export const supabaseProductsRepo: ProductsRepository = {
     return (data ?? []).map((row) => mapRow(row as ProductRow));
   },
 
+  async search(query, limit = 8) {
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+    const supabase = getPublicClient();
+    const escaped = trimmed.replace(/[%_]/g, "\\$&");
+    const { data, error } = await supabase
+      .from("products")
+      .select(PRODUCT_COLUMNS)
+      .eq("is_active", true)
+      .ilike("name", `%${escaped}%`)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error) throw error;
+    return (data ?? []).map((row) => mapRow(row as ProductRow));
+  },
+
   async listRelated(productId, limit = 4) {
     const supabase = getPublicClient();
     // Same `type` as the source product, excluding the source itself.
@@ -469,6 +485,32 @@ export const supabaseProductsRepo: ProductsRepository = {
     });
 
     return { rows, total: count ?? rows.length };
+  },
+
+  async listLowStock(threshold = 5) {
+    const supabase = createBrowserSupabase();
+    const { data, error } = await supabase
+      .from("products")
+      .select(`${PRODUCT_COLUMNS},is_active,total_stock`)
+      .eq("is_active", true)
+      .lt("total_stock", threshold)
+      .order("total_stock", { ascending: true })
+      .limit(10);
+    if (error) throw error;
+    return (data ?? []).map((row) => {
+      const r = row as ProductRow & { is_active: boolean; total_stock: number };
+      const mapped = mapRow(r);
+      return {
+        id: mapped.id,
+        name: mapped.name,
+        type: mapped.type,
+        image: mapped.image,
+        price: mapped.price,
+        stock: r.total_stock ?? 0,
+        isActive: r.is_active,
+        isNew: mapped.isNew,
+      };
+    });
   },
 
   async listColors() {
